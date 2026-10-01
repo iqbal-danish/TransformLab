@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Production frontend build outputs
+dist/
+dist-ssr/
+
+# Tauri / Rust build directory & binaries
+src-tauri/target/
+TransformLab.exe
+*.exe
+
+# Java compiled bytecode classes (preserve JARs)
+engine-worker/bin/
+
+# Temporary data, logs & debugging
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.temp/
+tmp/
+
+# IDE & Editor files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS metadata
+.DS_Store
+Thumbs.db
+ehthumbs.db
