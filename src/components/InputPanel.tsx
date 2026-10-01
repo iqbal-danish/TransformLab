@@ -5,7 +5,8 @@ import {
   Archive, 
   Maximize2, 
   Minimize2,
-  Trash2
+  Trash2,
+  Upload
 } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import type { FileMetadata, InputFormat } from '../types';
@@ -24,6 +25,7 @@ interface InputPanelProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   theme?: string;
+  isDraggingFile?: boolean;
 }
 
 export const InputPanel: React.FC<InputPanelProps> = ({
@@ -38,9 +40,19 @@ export const InputPanel: React.FC<InputPanelProps> = ({
   isExpanded,
   onToggleExpand,
   theme = 'one-dark-pro',
+  isDraggingFile = false,
 }) => {
   return (
     <div className="flex flex-col h-full bg-[#21252b] border-r border-[#30363d] relative overflow-hidden">
+      {/* Drag & Drop Visual Overlay */}
+      {isDraggingFile && (
+        <div className="absolute inset-0 bg-[#0d1117]/90 border-2 border-dashed border-[#58a6ff] z-50 flex flex-col items-center justify-center pointer-events-none backdrop-blur-[1px]">
+          <Upload className="w-10 h-10 text-[#58a6ff] animate-bounce mb-2" />
+          <p className="text-sm font-semibold text-white">Drop feed file here</p>
+          <p className="text-xs text-[#8b949e]">Auto-detects XML, JSON, GZ, or ZIP & inspects size</p>
+        </div>
+      )}
+
       {/* Panel Header (Exact 40px / h-10) */}
       <div className="h-10 border-b border-[#30363d] bg-[#161b22] px-3 flex items-center justify-between text-xs select-none">
         <div className="flex items-center space-x-2">
@@ -49,9 +61,14 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             INPUT ({inputFormat.toUpperCase()})
           </span>
           {metadata && (
-            <span className="text-[10px] bg-[#21262d] text-[#8b949e] px-1.5 py-0.5 rounded border border-[#30363d] font-mono">
-              {metadata.container !== 'none' ? metadata.container.toUpperCase() : 'RAW'}
-            </span>
+            <>
+              <span className="text-[10px] bg-[#21262d] text-[#8b949e] px-1.5 py-0.5 rounded border border-[#30363d] font-mono">
+                {metadata.container !== 'none' ? metadata.container.toUpperCase() : 'RAW'}
+              </span>
+              <span className="text-[10px] bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/40 px-2 py-0.5 rounded font-mono font-medium">
+                {formatBytes(metadata.sizeBytes)}
+              </span>
+            </>
           )}
         </div>
 
@@ -98,10 +115,12 @@ export const InputPanel: React.FC<InputPanelProps> = ({
         {metadata ? (
           <>
             <div className="flex items-center space-x-2 truncate">
-              <span className="text-[#58a6ff] truncate max-w-[190px]" title={metadata.path}>
+              <span className="text-[#58a6ff] font-medium truncate max-w-[200px]" title={metadata.path}>
                 {metadata.name}
               </span>
-              <span className="text-[#8b949e]">({formatBytes(metadata.sizeBytes)})</span>
+              <span className="text-[11px] font-mono font-semibold text-[#e6edf3] bg-[#21262d] border border-[#30363d] px-1.5 py-0.5 rounded">
+                {formatBytes(metadata.sizeBytes)}
+              </span>
               {metadata.isLargeFile && (
                 <span className="text-[10px] text-amber-300 bg-amber-950/50 border border-amber-800/40 px-1.5 py-0.5 rounded font-sans">
                   64 KB Preview
@@ -109,12 +128,12 @@ export const InputPanel: React.FC<InputPanelProps> = ({
               )}
             </div>
             <div className="text-[10px] text-emerald-400 font-sans shrink-0">
-              Full file transformed
+              Full feed transformed
             </div>
           </>
         ) : (
           <>
-            <span className="text-[#8b949e]">No file attached</span>
+            <span className="text-[#8b949e]">No file attached (Drag & drop feed or paste content)</span>
             <span className="text-[10px] text-[#8b949e] font-sans">Ready for input</span>
           </>
         )}

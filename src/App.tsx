@@ -13,6 +13,7 @@ import { HistoryModal, type HistoryItem } from './components/HistoryModal';
 import { DiffViewerModal } from './components/DiffViewerModal';
 import { formatBytes } from './utils/formatters';
 import { listen } from '@tauri-apps/api/event';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
 import type { 
   TransformType, 
   InputFormat, 
@@ -88,6 +89,7 @@ export function App() {
   const [isDiffOpen, setIsDiffOpen] = useState(false);
   const [editorTheme, setEditorTheme] = useState<EditorTheme>('one-dark-pro');
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
 
   // Panel sizing
   const [expandedPanel, setExpandedPanel] = useState<'input' | 'transform' | 'output' | null>(null);
@@ -108,7 +110,7 @@ export function App() {
 
   const isHugeXml = useMemo(() => {
     if (!inputFileMeta) return false;
-    return inputFileMeta.isLargeFile || (inputFileMeta.sizeBytes || 0) > 10 * 1024 * 1024;
+    return (inputFileMeta.sizeBytes || 0) > 100 * 1024 * 1024;
   }, [inputFileMeta]);
 
   // Handle mode change
@@ -127,10 +129,8 @@ export function App() {
     setInputFileMeta(null);
   };
 
-  // Open file handler
-  const handleOpenFile = async () => {
-    const filePath = await openFileDialog();
-    if (!filePath) return;
+  // Inspect and load a file from path (used by file dialog and drag-and-drop)
+  const handleLoadFilePath = async (filePath: string) => {
     try {
       const meta = await inspectFile(filePath);
       setInputFileMeta(meta);
@@ -151,6 +151,40 @@ export function App() {
       });
     }
   };
+
+  // Open file handler via native dialog
+  const handleOpenFile = async () => {
+    const filePath = await openFileDialog();
+    if (filePath) {
+      await handleLoadFilePath(filePath);
+    }
+  };
+
+  // Native OS Drag & Drop Listener
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    getCurrentWebview().onDragDropEvent((event) => {
+      if (event.payload.type === 'drop') {
+        const paths = event.payload.paths;
+        if (paths && paths.length > 0) {
+          handleLoadFilePath(paths[0]);
+        }
+        setIsDraggingFile(false);
+      } else if (event.payload.type === 'enter') {
+        setIsDraggingFile(true);
+      } else if (event.payload.type === 'leave') {
+        setIsDraggingFile(false);
+      }
+    }).then((fn) => {
+      unlisten = fn;
+    }).catch((err) => {
+      console.warn('Failed to register native drag-drop listener:', err);
+    });
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [transformType]);
 
   // URL Streaming Progress Listener
   useEffect(() => {
@@ -226,11 +260,11 @@ export function App() {
       return;
     }
 
-    if (transformType === 'xslt' && !isXsltStreamable && (inputFileMeta?.sizeBytes || 0) > 50 * 1024 * 1024) {
+    if (transformType === 'xslt' && !isXsltStreamable && (inputFileMeta?.sizeBytes || 0) > 100 * 1024 * 1024) {
       setDiagnosticError({
         category: 'Engine',
         code: 'NOT_STREAMABLE',
-        message: `Not Streamable: The XML feed is huge (${formatBytes(inputFileMeta!.sizeBytes)}), but your XSLT stylesheet does not declare <xsl:mode streamable="yes"/>. Please add streamable="yes" to allow Saxon to process this feed without memory exhaustion.`,
+        message: `Not Streamable: The XML feed exceeds 100MB (${formatBytes(inputFileMeta!.sizeBytes)}), but your XSLT stylesheet does not declare <xsl:mode streamable="yes"/>. Please add streamable="yes" to allow Saxon to process this feed without memory exhaustion.`,
       });
       return;
     }
@@ -500,6 +534,7 @@ export function App() {
               isExpanded={expandedPanel === 'input'}
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'input' ? null : 'input')}
               theme={editorTheme}
+              isDraggingFile={isDraggingFile}
             />
           </div>
         )}
@@ -532,6 +567,7 @@ export function App() {
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'transform' ? null : 'transform')}
               isStreamable={isXsltStreamable}
               isLargeInput={isHugeXml}
+              inputSizeBytes={inputFileMeta?.sizeBytes}
               theme={editorTheme}
             />
           </div>

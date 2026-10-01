@@ -7,11 +7,13 @@ import {
   Maximize2, 
   Minimize2, 
   Radio,
-  Trash2
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import type { TransformType } from '../types';
 import { defineMonacoThemes } from '../utils/monacoThemes';
+import { formatBytes } from '../utils/formatters';
 
 export interface TransformPanelHandle {
   goToLine: (line: number, column?: number) => void;
@@ -29,6 +31,7 @@ interface TransformPanelProps {
   onToggleExpand: () => void;
   isStreamable?: boolean;
   isLargeInput?: boolean;
+  inputSizeBytes?: number;
   theme?: string;
 }
 
@@ -43,6 +46,7 @@ export const TransformPanel = forwardRef<TransformPanelHandle, TransformPanelPro
   onToggleExpand,
   isStreamable = true,
   isLargeInput = false,
+  inputSizeBytes,
   theme = 'one-dark-pro',
 }, ref) => {
   const editorRef = useRef<any>(null);
@@ -64,6 +68,7 @@ export const TransformPanel = forwardRef<TransformPanelHandle, TransformPanelPro
 
   const language = transformType === 'xslt' ? 'xml' : 'json';
   const title = transformType === 'xslt' ? 'XSLT 3.0 STYLESHEET' : 'JOLT SPECIFICATION';
+  const isOver100MB = (inputSizeBytes || 0) > 100 * 1024 * 1024;
 
   return (
     <div className="flex flex-col h-full bg-[#21252b] border-r border-[#30363d] relative overflow-hidden">
@@ -75,25 +80,45 @@ export const TransformPanel = forwardRef<TransformPanelHandle, TransformPanelPro
             {title}
           </span>
           {transformType === 'xslt' && (
-            <span 
-              className={`text-[10px] px-1.5 py-0.5 rounded font-mono border flex items-center gap-1 ${
-                isStreamable 
-                  ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/40' 
-                  : isLargeInput
-                    ? 'bg-rose-950/50 text-rose-300 border-rose-800/50 font-medium'
-                    : 'bg-amber-950/40 text-amber-400 border-amber-800/40'
-              }`}
-              title={
-                isStreamable 
-                  ? "Saxon streamable processing ready (<xsl:mode streamable='yes'/> detected)" 
-                  : isLargeInput
-                    ? "Not Streamable: XML feed is huge and stylesheet lacks <xsl:mode streamable='yes'/>"
-                    : "Not Streamable: buffered in memory unless <xsl:mode streamable='yes'/> is present"
-              }
-            >
-              <Radio className="w-2.5 h-2.5" />
-              <span>{isStreamable ? 'Streamable' : 'Not Streamable'}</span>
-            </span>
+            <>
+              {isOver100MB && !isStreamable ? (
+                <span 
+                  className="text-[10px] px-2 py-0.5 rounded font-mono border flex items-center gap-1.5 bg-amber-950/60 text-amber-300 border-amber-600/60 font-semibold animate-pulse"
+                  title={`Input feed is ${formatBytes(inputSizeBytes!)} (>100MB). Streamable mode (<xsl:mode streamable="yes"/>) is strongly recommended to prevent memory exhaustion.`}
+                >
+                  <AlertTriangle className="w-3 h-3 text-amber-400" />
+                  <span>STREAMABLE RECOMMENDED (&gt;100MB)</span>
+                </span>
+              ) : isOver100MB && isStreamable ? (
+                <span 
+                  className="text-[10px] px-2 py-0.5 rounded font-mono border flex items-center gap-1 bg-emerald-950/50 text-emerald-300 border-emerald-700/60 font-semibold"
+                  title="Saxon O(1) streaming enabled for >100MB feed"
+                >
+                  <Radio className="w-2.5 h-2.5 text-emerald-400" />
+                  <span>STREAMABLE ACTIVE (&gt;100MB)</span>
+                </span>
+              ) : (
+                <span 
+                  className={`text-[10px] px-1.5 py-0.5 rounded font-mono border flex items-center gap-1 ${
+                    isStreamable 
+                      ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/40' 
+                      : isLargeInput
+                        ? 'bg-rose-950/50 text-rose-300 border-rose-800/50 font-medium'
+                        : 'bg-amber-950/40 text-amber-400 border-amber-800/40'
+                  }`}
+                  title={
+                    isStreamable 
+                      ? "Saxon streamable processing ready (<xsl:mode streamable='yes'/> detected)" 
+                      : isLargeInput
+                        ? "Not Streamable: XML feed is huge and stylesheet lacks <xsl:mode streamable='yes'/>"
+                        : "Not Streamable: buffered in memory unless <xsl:mode streamable='yes'/> is present"
+                  }
+                >
+                  <Radio className="w-2.5 h-2.5" />
+                  <span>{isStreamable ? 'Streamable' : 'Not Streamable'}</span>
+                </span>
+              )}
+            </>
           )}
         </div>
 
@@ -148,9 +173,20 @@ export const TransformPanel = forwardRef<TransformPanelHandle, TransformPanelPro
         <div className="flex items-center space-x-2 text-[#8b949e]">
           <span>Engine: <strong className="text-emerald-400">{transformType === 'xslt' ? 'Saxon-HE 12.5 (XSLT 3.0)' : 'Java JOLT 0.1.8'}</strong></span>
         </div>
-        <div className="flex items-center space-x-2 text-[10px] text-emerald-400 font-sans">
-          <span>● Engine Ready</span>
-        </div>
+        {transformType === 'xslt' && isOver100MB && !isStreamable ? (
+          <div className="flex items-center space-x-1.5 text-[10.5px] text-amber-300 font-sans font-medium bg-amber-950/50 border border-amber-800/40 px-2 py-0.5 rounded">
+            <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+            <span>Feed is {formatBytes(inputSizeBytes!)}: Streamable XSLT Recommended</span>
+          </div>
+        ) : transformType === 'xslt' && isOver100MB && isStreamable ? (
+          <div className="flex items-center space-x-2 text-[10px] text-emerald-400 font-sans">
+            <span>● Streamable Mode Active (&gt;100MB Feed)</span>
+          </div>
+        ) : (
+          <div className="flex items-center space-x-2 text-[10px] text-emerald-400 font-sans">
+            <span>● Engine Ready</span>
+          </div>
+        )}
       </div>
 
       {/* Editor Canvas */}
