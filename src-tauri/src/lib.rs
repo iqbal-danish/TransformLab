@@ -5,10 +5,20 @@ pub mod commands;
 use commands::*;
 use tauri::Manager;
 
+pub fn purge_temp_directory() {
+    let base_dir = std::env::temp_dir().join("TransformLab");
+    if base_dir.exists() {
+        let _ = std::fs::remove_dir_all(&base_dir);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .setup(|app| {
+            // Clean up any stale temp files from previous sessions on startup
+            purge_temp_directory();
+
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -20,6 +30,14 @@ pub fn run() {
                 let _ = window.set_theme(Some(tauri::Theme::Dark));
             }
             Ok(())
+        })
+        .on_window_event(|_window, event| {
+            match event {
+                tauri::WindowEvent::CloseRequested { .. } | tauri::WindowEvent::Destroyed => {
+                    purge_temp_directory();
+                }
+                _ => {}
+            }
         })
         .invoke_handler(tauri::generate_handler![
             open_file_dialog,
@@ -35,6 +53,15 @@ pub fn run() {
             clear_temp_cache,
             get_temp_cache_path,
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("error while building tauri application");
+
+    app.run(|_app_handle, event| {
+        match event {
+            tauri::RunEvent::Exit | tauri::RunEvent::ExitRequested { .. } => {
+                purge_temp_directory();
+            }
+            _ => {}
+        }
+    });
 }
