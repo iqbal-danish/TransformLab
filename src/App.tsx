@@ -114,7 +114,7 @@ export function App() {
   }, [inputFileMeta]);
 
   const isHugeXml = useMemo(() => {
-    return effectiveInputSize > 100 * 1024 * 1024;
+    return effectiveInputSize > 250 * 1024 * 1024;
   }, [effectiveInputSize]);
 
   // Handle mode change
@@ -264,11 +264,11 @@ export function App() {
       return;
     }
 
-    if (transformType === 'xslt' && !isXsltStreamable && effectiveInputSize > 100 * 1024 * 1024) {
+    if (transformType === 'xslt' && !isXsltStreamable && effectiveInputSize > 250 * 1024 * 1024) {
       setDiagnosticError({
         category: 'Engine',
         code: 'NOT_STREAMABLE',
-        message: `Not Streamable: The XML feed exceeds 100MB (${formatBytes(effectiveInputSize)} uncompressed), but your XSLT stylesheet does not declare <xsl:mode streamable="yes"/>. Please add streamable="yes" to allow Saxon to process this feed without memory exhaustion.`,
+        message: `Not Streamable: The XML feed exceeds 250MB (${formatBytes(effectiveInputSize)} uncompressed), but your XSLT stylesheet does not declare <xsl:mode streamable="yes"/>. Please add streamable="yes" to allow Saxon to process this feed without memory exhaustion.`,
       });
       return;
     }
