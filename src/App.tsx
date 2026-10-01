@@ -94,11 +94,16 @@ export function App() {
 
   const transformPanelRef = useRef<TransformPanelHandle>(null);
 
-  // Streamability detection
+  // Streamability detection (ignores XML comments and requires active <xsl:mode>)
   const isXsltStreamable = useMemo(() => {
     if (transformType !== 'xslt') return true;
     if (!transformContent.trim()) return false;
-    return /streamable\s*=\s*["'](yes|true)["']/i.test(transformContent);
+
+    // Strip XML comments first so commented-out mode tags are ignored
+    const uncommented = transformContent.replace(/<!--[\s\S]*?-->/g, '');
+
+    // Must match an active, uncommented <xsl:mode ... streamable="yes|true" ...>
+    return /<xsl:mode\b[^>]*\bstreamable\s*=\s*["'](yes|true)["']/i.test(uncommented);
   }, [transformType, transformContent]);
 
   const isHugeXml = useMemo(() => {
