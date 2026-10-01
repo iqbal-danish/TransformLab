@@ -65,8 +65,13 @@ export const InputPanel: React.FC<InputPanelProps> = ({
               <span className="text-[10px] bg-[#21262d] text-[#8b949e] px-1.5 py-0.5 rounded border border-[#30363d] font-mono">
                 {metadata.container !== 'none' ? metadata.container.toUpperCase() : 'RAW'}
               </span>
-              <span className="text-[10px] bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/40 px-2 py-0.5 rounded font-mono font-medium">
-                {formatBytes(metadata.sizeBytes)}
+              <span 
+                className="text-[10px] bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/40 px-2 py-0.5 rounded font-mono font-medium"
+                title={metadata.uncompressedSizeBytes ? `Compressed: ${formatBytes(metadata.sizeBytes)} | Uncompressed: ${formatBytes(metadata.uncompressedSizeBytes)}` : `Size: ${formatBytes(metadata.sizeBytes)}`}
+              >
+                {metadata.uncompressedSizeBytes && metadata.uncompressedSizeBytes !== metadata.sizeBytes
+                  ? `${formatBytes(metadata.uncompressedSizeBytes)} (raw)`
+                  : formatBytes(metadata.sizeBytes)}
               </span>
             </>
           )}
@@ -119,7 +124,9 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                 {metadata.name}
               </span>
               <span className="text-[11px] font-mono font-semibold text-[#e6edf3] bg-[#21262d] border border-[#30363d] px-1.5 py-0.5 rounded">
-                {formatBytes(metadata.sizeBytes)}
+                {metadata.uncompressedSizeBytes && metadata.uncompressedSizeBytes !== metadata.sizeBytes
+                  ? `${formatBytes(metadata.sizeBytes)} → ${formatBytes(metadata.uncompressedSizeBytes)} uncompressed`
+                  : formatBytes(metadata.sizeBytes)}
               </span>
               {metadata.isLargeFile && (
                 <span className="text-[10px] text-amber-300 bg-amber-950/50 border border-amber-800/40 px-1.5 py-0.5 rounded font-sans">

@@ -108,10 +108,14 @@ export function App() {
     return /<xsl:mode\b[^>]*\bstreamable\s*=\s*["'](yes|true)["']/i.test(uncommented);
   }, [transformType, transformContent]);
 
-  const isHugeXml = useMemo(() => {
-    if (!inputFileMeta) return false;
-    return (inputFileMeta.sizeBytes || 0) > 100 * 1024 * 1024;
+  const effectiveInputSize = useMemo(() => {
+    if (!inputFileMeta) return 0;
+    return inputFileMeta.uncompressedSizeBytes || inputFileMeta.sizeBytes || 0;
   }, [inputFileMeta]);
+
+  const isHugeXml = useMemo(() => {
+    return effectiveInputSize > 100 * 1024 * 1024;
+  }, [effectiveInputSize]);
 
   // Handle mode change
   const handleTransformTypeChange = (type: TransformType) => {
@@ -260,11 +264,11 @@ export function App() {
       return;
     }
 
-    if (transformType === 'xslt' && !isXsltStreamable && (inputFileMeta?.sizeBytes || 0) > 100 * 1024 * 1024) {
+    if (transformType === 'xslt' && !isXsltStreamable && effectiveInputSize > 100 * 1024 * 1024) {
       setDiagnosticError({
         category: 'Engine',
         code: 'NOT_STREAMABLE',
-        message: `Not Streamable: The XML feed exceeds 100MB (${formatBytes(inputFileMeta!.sizeBytes)}), but your XSLT stylesheet does not declare <xsl:mode streamable="yes"/>. Please add streamable="yes" to allow Saxon to process this feed without memory exhaustion.`,
+        message: `Not Streamable: The XML feed exceeds 100MB (${formatBytes(effectiveInputSize)} uncompressed), but your XSLT stylesheet does not declare <xsl:mode streamable="yes"/>. Please add streamable="yes" to allow Saxon to process this feed without memory exhaustion.`,
       });
       return;
     }
@@ -567,7 +571,7 @@ export function App() {
               onToggleExpand={() => setExpandedPanel(expandedPanel === 'transform' ? null : 'transform')}
               isStreamable={isXsltStreamable}
               isLargeInput={isHugeXml}
-              inputSizeBytes={inputFileMeta?.sizeBytes}
+              inputSizeBytes={effectiveInputSize}
               theme={editorTheme}
             />
           </div>

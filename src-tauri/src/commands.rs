@@ -91,6 +91,10 @@ pub async fn inspect_file(path: String) -> Result<FileMetadata, String> {
                     });
                 }
             }
+            let total_uncompressed: u64 = entries.iter().map(|e| e.size_bytes).sum();
+            if total_uncompressed > 0 {
+                uncompressed_size = Some(total_uncompressed);
+            }
             zip_entries = Some(entries);
         }
     }
